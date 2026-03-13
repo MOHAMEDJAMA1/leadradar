@@ -14,7 +14,7 @@ import { Footer } from '@/components/landing/Footer'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-    title: 'LeadRadar — Find People Already Asking for Your Service Online',
+    title: 'LeadRadar — Find Clients on Reddit & X',
     description:
         'LeadRadar scans online communities and detects high-intent posts where people are looking for services like yours. AI-powered lead detection for agencies and consultants.',
 }
