@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -8,7 +8,6 @@ import {
     Settings, Radar, LogOut, ChevronRight,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 
 const NAV_ITEMS = [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -20,21 +19,13 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
     const pathname = usePathname()
-    const router = useRouter()
     const [signingOut, setSigningOut] = useState(false)
-    const [isPending, startTransition] = useTransition()
 
     async function handleSignOut() {
         setSigningOut(true)
         const supabase = createClient()
         await supabase.auth.signOut()
-        router.push('/login')
-    }
-
-    const handleNavigate = (href: string) => {
-        startTransition(() => {
-            router.push(href)
-        })
+        window.location.href = '/login'
     }
 
     return (
@@ -52,20 +43,19 @@ export function Sidebar() {
                 {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
                     const active = pathname === href || pathname.startsWith(href + '/')
                     return (
-                        <button
+                        <Link
                             key={href}
-                            onClick={() => handleNavigate(href)}
-                            disabled={isPending}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group ${active
+                            href={href}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group ${active
                                 ? 'bg-blue-600/20 text-blue-400 shadow-sm'
                                 : 'text-slate-400 hover:text-white hover:bg-white/5'
-                                } ${isPending ? 'opacity-70' : ''}`}
+                                }`}
                             aria-current={active ? 'page' : undefined}
                         >
                             <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'}`} aria-hidden="true" />
                             {label}
                             {active && <ChevronRight className="w-3 h-3 ml-auto text-blue-500/60" aria-hidden="true" />}
-                        </button>
+                        </Link>
                     )
                 })}
             </nav>
