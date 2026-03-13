@@ -121,6 +121,8 @@ create index if not exists leads_user_id_idx on public.leads(user_id);
 create index if not exists leads_status_idx on public.leads(status);
 create index if not exists leads_intent_level_idx on public.leads(intent_level);
 create index if not exists leads_created_at_idx on public.leads(created_at desc);
+create index if not exists leads_user_status_idx on public.leads(user_id, status);
+create index if not exists leads_matched_keyword_idx on public.leads(matched_keyword);
 
 -- -------------------------------------------------------
 -- 6. ALERTS

@@ -42,7 +42,10 @@ export async function middleware(request: NextRequest) {
 
     const isPublicRoute = pathname === '/'
 
-    if (!user && !isAuthRoute && !isPublicRoute) {
+    // Allow cron jobs to bypass user session check (they have their own CRON_SECRET auth)
+    const isCronRoute = pathname.startsWith('/api/cron')
+
+    if (!user && !isAuthRoute && !isPublicRoute && !isCronRoute) {
         const url = request.nextUrl.clone()
         url.pathname = '/login'
         return NextResponse.redirect(url)

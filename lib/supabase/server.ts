@@ -26,3 +26,24 @@ export async function createClient() {
         }
     )
 }
+
+/**
+ * Creates a Supabase client with the service role key.
+ * Use this ONLY for administrative tasks on the server that bypass RLS.
+ */
+export async function createAdminClient() {
+    return createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+            cookies: {
+                getAll() {
+                    return []
+                },
+                setAll() {
+                    // No-op for admin client
+                },
+            },
+        }
+    )
+}
