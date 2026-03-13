@@ -118,7 +118,6 @@ export function TopNav({ userName = 'User', userRole = 'MEMBER', lastScanAt }: T
                 </div>
                 <div className="hidden sm:block">
                     <p className="text-xs font-semibold text-white leading-none">{userName}</p>
-                    <p className="text-[10px] text-slate-500 leading-none mt-0.5">{userRole}</p>
                 </div>
             </div>
 
