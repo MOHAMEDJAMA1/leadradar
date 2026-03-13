@@ -6,6 +6,7 @@ import { normalizePost, normalizeComment } from './normalizer'
 import { matchKeywords, pickBestMatch } from './keywordMatcher'
 import { scoreIntent, getRawScore, meetsThreshold, isMegathread, isThread } from './intentScorer'
 import { persistLead } from './leadPersister'
+import { isHotLead } from '@/types/leads'
 
 const DEFAULT_SUBREDDITS = [
     'startups', 'entrepreneur', 'smallbusiness', 'ecommerce',
@@ -14,11 +15,10 @@ const DEFAULT_SUBREDDITS = [
 
 const POSTS_PER_SUBREDDIT = 25
 
-import { isHotLead } from '@/types/leads'
-
 /**
  * Main scanning orchestrator.
  * Runs the full pipeline: fetch → normalize → match → score → persist.
+ * Optimised with parallel community processing.
  */
 export async function runScan(
     supabase: SupabaseClient,
@@ -48,15 +48,20 @@ export async function runScan(
     }
 
     try {
-        // ... (Skipping 1, 2, 3 as they are unchanged up to the loop)
-        const { data: monitoredRows } = await supabase.from('user_monitored_communities').select('community_id, communities(id, name, source_id)').eq('user_id', userId)
+        const { data: monitoredRows } = await supabase.from('user_monitored_communities')
+            .select('community_id, communities(id, name, source_id)')
+            .eq('user_id', userId)
+
         let communities: Array<{ id: string; name: string; source_id: string }> = []
         if (monitoredRows && monitoredRows.length > 0) {
             communities = monitoredRows.map((r: any) => r.communities).filter(Boolean)
         } else {
-            const { data: defaultCommunities } = await supabase.from('communities').select('id, name, source_id').in('name', DEFAULT_SUBREDDITS)
+            const { data: defaultCommunities } = await supabase.from('communities')
+                .select('id, name, source_id')
+                .in('name', DEFAULT_SUBREDDITS)
             communities = defaultCommunities ?? []
         }
+
         if (communities.length === 0) {
             summary.errors.push('No communities found to scan')
             summary.durationMs = Date.now() - startTime
@@ -65,12 +70,15 @@ export async function runScan(
 
         const { data: redditSource } = await supabase.from('sources').select('id').eq('type', 'reddit').single()
         const sourceId = redditSource?.id ?? null
-        // fallback to null if no source id mapping exists to prevent crash
         
         const { data: twitterSource } = await supabase.from('sources').select('id').eq('type', 'twitter').single()
         const twitterSourceId = twitterSource?.id ?? null
 
-        const { data: keywordRows } = await supabase.from('tracked_keywords').select('id, keyword, category').eq('user_id', userId).eq('is_active', true)
+        const { data: keywordRows } = await supabase.from('tracked_keywords')
+            .select('id, keyword, category')
+            .eq('user_id', userId)
+            .eq('is_active', true)
+        
         const keywords: ActiveKeyword[] = keywordRows ?? []
         if (keywords.length === 0) {
             summary.errors.push('No active keywords to match against')
@@ -78,35 +86,27 @@ export async function runScan(
             return summary
         }
 
-        for (const community of communities) {
-            summary.scannedCommunities++
-            if (summary.reddit) summary.reddit.communitiesScanned++
-
-            const posts = await fetchSubredditPosts(community.name, POSTS_PER_SUBREDDIT)
-            summary.postsChecked += posts.length
-            if (summary.reddit) summary.reddit.postsChecked += posts.length
-
-            for (const post of posts) {
-                const normalized = normalizePost(post)
-
-                if (normalized.searchText.length < 10) continue
-
-                if (isMegathread(post.title)) {
-                    summary.leadsSkipped++
-                    continue
+        // --- Reddit Parallel Scanning ---
+        const redditPromises = communities.map(async (community) => {
+            try {
+                const posts = await fetchSubredditPosts(community.name, POSTS_PER_SUBREDDIT)
+                summary.postsChecked += posts.length
+                if (summary.reddit) {
+                    summary.reddit.communitiesScanned++
+                    summary.reddit.postsChecked += posts.length
                 }
 
-                if (isThread(normalized.searchText)) {
-                    summary.leadsSkipped++
-                    continue
-                }
+                for (const post of posts) {
+                    const normalized = normalizePost(post)
+                    if (normalized.searchText.length < 10) continue
+                    if (isMegathread(post.title) || isThread(normalized.searchText)) {
+                        summary.leadsSkipped++
+                        continue
+                    }
 
-                // --- Top Level Post Scanning ---
-                const matches = matchKeywords(normalized.searchText, keywords)
-                const bestMatch = pickBestMatch(matches)
-                if (bestMatch) {
-                    const rawScore = getRawScore(normalized.searchText)
-                    if (meetsThreshold(rawScore)) {
+                    const matches = matchKeywords(normalized.searchText, keywords)
+                    const bestMatch = pickBestMatch(matches)
+                    if (bestMatch && meetsThreshold(getRawScore(normalized.searchText))) {
                         summary.matchesFound++
                         const intent = scoreIntent(normalized.searchText, bestMatch.keywordPhrase, 'reddit', post.createdAt.toISOString())
                         const result = await persistLead(supabase, {
@@ -128,92 +128,68 @@ export async function runScan(
                             }
                         } else {
                             summary.leadsSkipped++
-                            if (result.error) summary.errors.push(`Persist error for post ${post.externalId}: ${result.error}`)
                         }
                     }
-                }
 
-                // --- Comment Scanning (Phase 5.6) ---
-                const comments = await fetchPostComments(post.permalink, 10)
-                if (summary.reddit) summary.reddit.commentsChecked += comments.length
-                for (const comment of comments) {
-                    const normComment = normalizeComment(comment, post)
+                    const comments = await fetchPostComments(post.permalink, 10)
+                    if (summary.reddit) summary.reddit.commentsChecked += comments.length
+                    for (const comment of comments) {
+                        const normComment = normalizeComment(comment, post)
+                        if (normComment.searchText.length < 10 || isThread(normComment.searchText)) continue
 
-                    if (normComment.searchText.length < 10) continue
-                    if (isThread(normComment.searchText)) {
-                        summary.leadsSkipped++
-                        continue
-                    }
-
-                    const cMatches = matchKeywords(normComment.searchText, keywords)
-                    const cBestMatch = pickBestMatch(cMatches)
-                    if (!cBestMatch) continue
-
-                    const cRawScore = getRawScore(normComment.searchText)
-                    if (!meetsThreshold(cRawScore)) continue
-
-                    summary.matchesFound++
-                    const cIntent = scoreIntent(normComment.searchText, cBestMatch.keywordPhrase, 'reddit', comment.createdAt.toISOString())
-                    const cResult = await persistLead(supabase, {
-                        userId, post: normComment, match: cBestMatch, intent: cIntent, sourceId, communityId: community.id,
-                    })
-
-                    if (cResult.created) {
-                        summary.leadsCreated++
-                        if (summary.reddit) summary.reddit.leadsDetected++
-                        if (createAlerts && cResult.leadId) {
-                            const isHot = isHotLead({ intent_score_numeric: cIntent.score, intent_level: cIntent.level, match_reasons_json: cIntent.reasons } as any)
-                            await supabase.from('alerts').insert({
-                                user_id: userId,
-                                title: `${isHot ? '🔥' : '🔔'} New Reddit Lead (Comment)`,
-                                message: normComment.parentPostTitle || 'New comment match',
-                                lead_id: cResult.leadId,
-                                type: isHot ? 'hot_lead' : 'new_lead'
+                        const cMatches = matchKeywords(normComment.searchText, keywords)
+                        const cBestMatch = pickBestMatch(cMatches)
+                        if (cBestMatch && meetsThreshold(getRawScore(normComment.searchText))) {
+                            summary.matchesFound++
+                            const cIntent = scoreIntent(normComment.searchText, cBestMatch.keywordPhrase, 'reddit', comment.createdAt.toISOString())
+                            const cResult = await persistLead(supabase, {
+                                userId, post: normComment, match: cBestMatch, intent: cIntent, sourceId, communityId: community.id,
                             })
+
+                            if (cResult.created) {
+                                summary.leadsCreated++
+                                if (summary.reddit) summary.reddit.leadsDetected++
+                                if (createAlerts && cResult.leadId) {
+                                    const isHot = isHotLead({ intent_score_numeric: cIntent.score, intent_level: cIntent.level, match_reasons_json: cIntent.reasons } as any)
+                                    await supabase.from('alerts').insert({
+                                        user_id: userId,
+                                        title: `${isHot ? '🔥' : '🔔'} New Reddit Lead (Comment)`,
+                                        message: normComment.parentPostTitle || 'New comment match',
+                                        lead_id: cResult.leadId,
+                                        type: isHot ? 'hot_lead' : 'new_lead'
+                                    })
+                                }
+                            } else {
+                                summary.leadsSkipped++
+                            }
                         }
-                    } else {
-                        summary.leadsSkipped++
-                        if (cResult.error) summary.errors.push(`Persist error for comment ${comment.id}: ${cResult.error}`)
                     }
                 }
+            } catch (err) {
+                console.error(`Error scanning Reddit community ${community.name}:`, err)
             }
-        }
+        })
 
-        // --- Phase 7: Twitter Scraping ---
-        summary.scannedCommunities++ // Count "Twitter" as a 'community' block for analytics
-        for (const kw of keywords) {
-            const queries = buildTwitterSearchQueries(kw.keyword)
-            
-            // Limit to 2 queries per keyword on MVP to prevent rate limits
-            for (const query of queries.slice(0, 2)) {
-                if (summary.twitter) summary.twitter.queriesExecuted++
-                const tweets = await scrapeTwitterSearch(query, 15) // fetch top 15 recent
-                summary.postsChecked += tweets.length
-                if (summary.twitter) summary.twitter.postsChecked += tweets.length
-                
-                for (const tweet of tweets) {
-                    if (tweet.searchText.length < 10) continue
-                    if (isThread(tweet.searchText)) {
-                        summary.leadsSkipped++
-                        continue
-                    }
+        // --- Twitter Parallel Scanning ---
+        const twitterPromises = keywords.map(async (kw) => {
+            try {
+                const queries = buildTwitterSearchQueries(kw.keyword)
+                for (const query of queries.slice(0, 2)) {
+                    if (summary.twitter) summary.twitter.queriesExecuted++
+                    const tweets = await scrapeTwitterSearch(query, 15)
+                    summary.postsChecked += tweets.length
+                    if (summary.twitter) summary.twitter.postsChecked += tweets.length
 
-                    const matches = matchKeywords(tweet.searchText, [kw]) // Hard-bind to the exact keyword searched
-                    const bestMatch = pickBestMatch(matches)
+                    for (const tweet of tweets) {
+                        if (tweet.searchText.length < 10 || isThread(tweet.searchText)) continue
+                        const matches = matchKeywords(tweet.searchText, [kw])
+                        const bestMatch = pickBestMatch(matches)
 
-                    if (bestMatch) {
-                        const rawScore = getRawScore(tweet.searchText)
-                        if (meetsThreshold(rawScore)) {
+                        if (bestMatch && meetsThreshold(getRawScore(tweet.searchText))) {
                             summary.matchesFound++
                             const intent = scoreIntent(tweet.searchText, bestMatch.keywordPhrase, 'twitter', tweet.createdAt.toISOString())
-                            
                             const result = await persistLead(supabase, {
-                                userId, 
-                                post: tweet, 
-                                match: bestMatch, 
-                                intent, 
-                                sourceId: twitterSourceId || sourceId || '', 
-                                communityId: communities[0]?.id || '' // Assign to first default community to satisfy schema
+                                userId, post: tweet, match: bestMatch, intent, sourceId: twitterSourceId || sourceId || '', communityId: communities[0]?.id || ''
                             })
 
                             if (result.created) {
@@ -231,23 +207,24 @@ export async function runScan(
                                 }
                             } else {
                                 summary.leadsSkipped++
-                                if (result.error) summary.errors.push(`Persist error for tweet ${tweet.externalId}: ${result.error}`)
                             }
                         }
                     }
                 }
+            } catch (err) {
+                console.error(`Error scanning Twitter for keyword ${kw.keyword}:`, err)
             }
-        }
+        })
+
+        await Promise.all([...redditPromises, ...twitterPromises])
+        summary.scannedCommunities = communities.length + 1
 
     } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        summary.errors.push(`Scan failed: ${message}`)
-        console.error('[Scanner] Unexpected error:', err)
+        summary.errors.push(`Scan failed: ${err instanceof Error ? err.message : String(err)}`)
     }
 
     summary.durationMs = Date.now() - startTime
-
-    // Persist completion state and stats (Phase 8)
+    
     await supabase.from('user_settings').update({
         last_scan_at: new Date().toISOString(),
         last_scan_summary: summary

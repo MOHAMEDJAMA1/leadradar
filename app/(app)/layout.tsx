@@ -4,6 +4,9 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { TopNav } from '@/components/layout/TopNav'
 import { getUserSettings } from '@/app/actions/settings'
 
+import { Suspense } from 'react'
+import { LoadingBar } from '@/components/layout/LoadingBar'
+
 export default async function AppLayout({
     children,
 }: {
@@ -33,6 +36,9 @@ export default async function AppLayout({
 
     return (
         <div className="min-h-screen bg-[#0d1117]">
+            <Suspense fallback={null}>
+                <LoadingBar />
+            </Suspense>
             <Sidebar />
             <div className="pl-[220px]">
                 <TopNav userName={userName} userRole="ADMIN" lastScanAt={settings?.last_scan_at} />
