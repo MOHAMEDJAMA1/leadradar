@@ -7,57 +7,31 @@ export const metadata: Metadata = {
     title: 'Dashboard — LeadRadar',
 }
 
+import { getAuthenticatedUser } from '@/lib/services/auth'
+
 export default async function DashboardPage() {
     const supabase = await createClient()
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    const user = await getAuthenticatedUser()
 
     if (!user) redirect('/login')
 
-    // Fetch total tracked keywords
-    const { count: keywordsCount } = await supabase
-        .from('tracked_keywords')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-
-    // Fetch total monitored communities
-    const { count: communitiesCount } = await supabase
-        .from('user_monitored_communities')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-
-    // Calculate start of today for New Leads count
     const startOfToday = new Date()
     startOfToday.setHours(0, 0, 0, 0)
 
-    // Fetch New Leads Today
-    const { count: newLeadsCount } = await supabase
-        .from('leads')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .gte('created_at', startOfToday.toISOString())
-
-    // Fetch Saved Leads
-    const { count: savedLeadsCount } = await supabase
-        .from('leads')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('status', 'saved')
-
-    // Fetch leads for the recent table
-    const { data: leads } = await supabase
-        .from('leads')
-        .select(`
-            *,
-            communities(name),
-            sources(name)
-        `)
-        .eq('user_id', user.id)
-        .neq('status', 'dismissed')
-        .order('created_at', { ascending: false })
-        .limit(10)
+    // Execute all queries in parallel to eliminate waterfalls
+    const [
+        { count: keywordsCount },
+        { count: communitiesCount },
+        { count: newLeadsCount },
+        { count: savedLeadsCount },
+        { data: leads }
+    ] = await Promise.all([
+        supabase.from('tracked_keywords').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('is_active', true),
+        supabase.from('user_monitored_communities').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('leads').select('*', { count: 'exact', head: true }).eq('user_id', user.id).gte('created_at', startOfToday.toISOString()),
+        supabase.from('leads').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('status', 'saved'),
+        supabase.from('leads').select('*, communities(name), sources(name)').eq('user_id', user.id).neq('status', 'dismissed').order('created_at', { ascending: false }).limit(10)
+    ])
 
     return (
         <DashboardClient

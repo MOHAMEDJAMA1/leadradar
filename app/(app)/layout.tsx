@@ -7,15 +7,21 @@ import { getUserSettings } from '@/app/actions/settings'
 import { Suspense } from 'react'
 import { LoadingBar } from '@/components/layout/LoadingBar'
 
+import { getAuthenticatedUser } from '@/lib/services/auth'
+
 export default async function AppLayout({
     children,
 }: {
     children: React.ReactNode
 }) {
-    const supabase = await createClient()
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    // Parallelize authentication and settings fetch
+    const [
+        user,
+        { settings, success }
+    ] = await Promise.all([
+        getAuthenticatedUser(),
+        getUserSettings()
+    ])
 
     if (!user) {
         redirect('/login')
@@ -27,9 +33,6 @@ export default async function AppLayout({
         ?? 'User'
 
     // Intercept incomplete onboarding
-    const { settings, success } = await getUserSettings()
-    
-    // If settings missing OR onboarding not marked complete, push to onboarding
     if (!success || !settings || !settings.onboarding_completed) {
         redirect('/onboarding')
     }

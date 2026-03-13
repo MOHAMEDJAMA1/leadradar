@@ -2,13 +2,14 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getAuthenticatedUser } from '@/lib/services/auth'
 
 export type LeadStatus = 'new' | 'viewed' | 'saved' | 'contacted' | 'dismissed'
 
 export async function updateLeadStatus(leadId: string, newStatus: LeadStatus) {
     try {
         const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const user = await getAuthenticatedUser()
 
         if (!user) {
             return { success: false, error: 'Unauthorized' }
@@ -40,7 +41,7 @@ export async function getLeads(
 ) {
     try {
         const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const user = await getAuthenticatedUser()
 
         if (!user) throw new Error('Unauthorized')
 

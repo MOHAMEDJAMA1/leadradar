@@ -4,10 +4,13 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { logger } from '@/lib/logger'
 
-export async function getUserSettings() {
+import { cache } from 'react'
+import { getAuthenticatedUser } from '@/lib/services/auth'
+
+export const getUserSettings = cache(async () => {
     try {
         const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const user = await getAuthenticatedUser()
 
         if (!user) {
             logger.security('getUserSettings attempted without authentication')
@@ -58,7 +61,7 @@ export async function getUserSettings() {
         logger.error('[getUserSettings] Error:', error)
         return { success: false, error: error.message }
     }
-}
+})
 
 export async function updateUserSettings(updates: { 
     scan_frequency?: string; 

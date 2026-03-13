@@ -9,20 +9,16 @@ export const metadata: Metadata = {
     title: 'Lead Inbox — LeadRadar',
 }
 
+import { getAuthenticatedUser } from '@/lib/services/auth'
+
 export default async function LeadsPage({
     searchParams,
 }: {
     searchParams: Promise<{ tab?: string; sort?: string; page?: string }>
 }) {
     const supabase = await createClient()
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) redirect('/login')
-
     const params = await searchParams
-    const tab = params.tab || 'all' // all, hot, saved, contacted, dismissed
+    const tab = params.tab || 'all'
     const sort = params.sort === 'highest_intent' ? 'highest_intent' : 'newest'
 
     // Define standard filters based on tab
@@ -30,14 +26,18 @@ export default async function LeadsPage({
     if (tab === 'saved') filters.status = 'saved'
     if (tab === 'contacted') filters.status = 'contacted'
     if (tab === 'dismissed') filters.status = 'dismissed'
-    
-    // If "hot" we want all hot leads regardless of status (as long as not dismissed)
-    // Deep Fix: Use native DB filter for Hot leads to ensure accuracy
-    if (tab === 'hot') {
-        filters.confidence = 'Hot'
-    }
+    if (tab === 'hot') filters.confidence = 'Hot'
 
-    const { data: leads, error: leadsError } = await getLeads(filters, sort as 'highest_intent' | 'newest')
+    // Fetch user and leads in parallel
+    const [
+        user,
+        { data: leads, error: leadsError }
+    ] = await Promise.all([
+        getAuthenticatedUser(),
+        getLeads(filters, sort as 'highest_intent' | 'newest')
+    ])
+
+    if (!user) redirect('/login')
 
     if (leadsError) {
         console.error('[LeadsPage] Fetch Error:', leadsError)
