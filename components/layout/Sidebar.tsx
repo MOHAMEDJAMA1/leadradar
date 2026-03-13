@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
     LayoutDashboard, Users, Key, Globe2, Bell,
-    Settings, Radar, LogOut, ChevronRight,
+    Settings, Radar, LogOut, ChevronRight, X
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -17,7 +17,12 @@ const NAV_ITEMS = [
     { label: 'Alerts', href: '/alerts', icon: Bell },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+    isOpen?: boolean
+    onClose?: () => void
+}
+
+export function Sidebar({ isOpen, onClose }: SidebarProps) {
     const pathname = usePathname()
     const [signingOut, setSigningOut] = useState(false)
 
@@ -29,13 +34,24 @@ export function Sidebar() {
     }
 
     return (
-        <aside className="fixed left-0 top-0 h-full w-[220px] flex flex-col bg-[#111827] border-r border-white/5 z-40">
+        <aside className={`fixed left-0 top-0 h-full w-[220px] flex flex-col bg-[#111827] border-r border-white/5 z-40 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
             {/* Logo */}
-            <div className="flex items-center gap-2.5 px-5 h-14 border-b border-white/5 shrink-0">
-                <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg shadow-blue-500/30">
-                    <Radar className="w-4 h-4 text-white" aria-hidden="true" />
+            <div className="flex items-center justify-between gap-2.5 px-5 h-14 border-b border-white/5 shrink-0">
+                <div className="flex items-center gap-2.5">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg shadow-blue-500/30">
+                        <Radar className="w-4 h-4 text-white" aria-hidden="true" />
+                    </div>
+                    <span className="text-sm font-bold text-white tracking-tight">LeadRadar</span>
                 </div>
-                <span className="text-sm font-bold text-white tracking-tight">LeadRadar</span>
+
+                {/* Close button - Mobile only */}
+                <button
+                    onClick={onClose}
+                    className="lg:hidden p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 transition-colors"
+                    aria-label="Close menu"
+                >
+                    <X className="w-5 h-5" />
+                </button>
             </div>
 
             {/* Nav links */}

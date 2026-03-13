@@ -9,6 +9,8 @@ import { LoadingBar } from '@/components/layout/LoadingBar'
 
 import { getAuthenticatedUser } from '@/lib/services/auth'
 
+import { AppLayoutClient } from '@/components/layout/AppLayoutClient'
+
 export default async function AppLayout({
     children,
 }: {
@@ -42,13 +44,13 @@ export default async function AppLayout({
             <Suspense fallback={null}>
                 <LoadingBar />
             </Suspense>
-            <Sidebar />
-            <div className="pl-[220px]">
-                <TopNav userName={userName} userRole="ADMIN" lastScanAt={settings?.last_scan_at} />
-                <main className="pt-14 p-6 min-h-screen">
-                    {children}
-                </main>
-            </div>
+            
+            <AppLayoutClient 
+                userName={userName} 
+                lastScanAt={settings?.last_scan_at}
+            >
+                {children}
+            </AppLayoutClient>
         </div>
     )
 }

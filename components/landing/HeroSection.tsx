@@ -28,16 +28,15 @@ export function HeroSection() {
 
                 {/* Headline */}
                 <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.08] tracking-tight mb-6">
-                    Find people already asking<br />
-                    for{' '}
+                    Find People Asking For<br />
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-violet-400">
-                        your service online.
+                        Your Services Online.
                     </span>
                 </h1>
 
                 {/* Subheadline */}
                 <p className="text-lg text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-                    LeadRadar scans online communities and detects high-intent posts where people are looking for services like yours.
+                    LeadRadar detects real posts from Reddit and X where people are looking for services like SEO, marketing, and web development.
                 </p>
 
                 {/* CTAs */}
@@ -46,16 +45,12 @@ export function HeroSection() {
                         href="/signup"
                         className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200"
                     >
-                        Join Early Access
+                        Start Finding Leads
                         <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                         </svg>
                     </Link>
                     <button className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-sm text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all duration-200">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
                         View Demo
                     </button>
                 </div>

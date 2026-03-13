@@ -1,6 +1,6 @@
 import { Navbar } from '@/components/landing/Navbar'
 import { HeroSection } from '@/components/landing/HeroSection'
-import { ExampleLeadStrip } from '@/components/landing/ExampleLeadStrip'
+import { LiveLeadsProof } from '@/components/landing/LiveLeadsProof'
 import { ProductPreview } from '@/components/landing/ProductPreview'
 import { HowItWorks } from '@/components/landing/HowItWorks'
 import { AudienceSection } from '@/components/landing/AudienceSection'
@@ -16,7 +16,7 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
     title: 'LeadRadar — Find Clients on Reddit & X',
     description:
-        'LeadRadar scans online communities and detects high-intent posts where people are looking for services like yours. AI-powered lead detection for agencies and consultants.',
+        'Find People Asking For Your Services Online. LeadRadar detects real posts from Reddit and X where people are looking for services like SEO, marketing, and web development.',
 }
 
 export default function LandingPage() {
@@ -25,7 +25,7 @@ export default function LandingPage() {
             <Navbar />
             <main>
                 <HeroSection />
-                <ExampleLeadStrip />
+                <LiveLeadsProof />
                 <ProductPreview />
                 <HowItWorks />
                 <AudienceSection />

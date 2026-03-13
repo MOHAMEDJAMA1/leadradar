@@ -54,7 +54,7 @@ export function LeadListClient({ initialLeads, hideHeader = false }: LeadListCli
     }
 
     return (
-        <div className={`transition-all duration-300 ${selectedLead ? 'mr-[400px]' : ''}`}>
+        <div className={`transition-all duration-300 ${selectedLead ? 'lg:mr-[400px]' : ''}`}>
             <section className="rounded-2xl border border-white/8 bg-[#111827] overflow-hidden" aria-labelledby="lead-inbox-heading">
                 {/* Section header */}
                 {!hideHeader && (

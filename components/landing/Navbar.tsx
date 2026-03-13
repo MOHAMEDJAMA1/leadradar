@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Menu, X, Radar } from 'lucide-react'
-import { WaitlistModal } from '@/components/landing/WaitlistModal'
 
 export function Navbar() {
     const [mobileOpen, setMobileOpen] = useState(false)
@@ -39,7 +38,7 @@ export function Navbar() {
                         href="/signup"
                         className="px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white transition-all duration-150 shadow-lg shadow-blue-500/20"
                     >
-                        Join Early Access
+                        Start Finding Leads
                     </Link>
                 </div>
 
@@ -66,7 +65,7 @@ export function Navbar() {
                         onClick={() => setMobileOpen(false)}
                         className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-semibold bg-gradient-to-r from-blue-600 to-violet-600 text-white"
                     >
-                        Join Early Access
+                        Start Finding Leads
                     </Link>
                 </div>
             )}

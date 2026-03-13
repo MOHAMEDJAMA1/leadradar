@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Bell, Rocket } from 'lucide-react'
+import { Bell, Rocket, Menu } from 'lucide-react'
 import { triggerScan } from '@/app/actions/scan'
 import { getUnreadAlertsCount } from '@/app/actions/alerts'
 import { ScanResultBanner } from '@/components/dashboard/ScanResultBanner'
@@ -13,9 +13,10 @@ interface TopNavProps {
     userName?: string
     userRole?: string
     lastScanAt?: string | null
+    onMenuClick?: () => void
 }
 
-export function TopNav({ userName = 'User', userRole = 'MEMBER', lastScanAt }: TopNavProps) {
+export function TopNav({ userName = 'User', userRole = 'MEMBER', lastScanAt, onMenuClick }: TopNavProps) {
     const router = useRouter()
     const [isScanning, setIsScanning] = useState(false)
     const [scanSummary, setScanSummary] = useState<any>(null)
@@ -57,7 +58,15 @@ export function TopNav({ userName = 'User', userRole = 'MEMBER', lastScanAt }: T
     }
 
     return (
-        <header className="fixed top-0 left-[220px] right-0 h-14 flex items-center gap-6 px-6 bg-[#0d1117] border-b border-white/5 z-30">
+        <header className="fixed top-0 left-0 lg:left-[220px] right-0 h-14 flex items-center gap-4 sm:gap-6 px-4 sm:px-6 bg-[#0d1117] border-b border-white/5 z-30">
+            {/* Mobile menu toggle */}
+            <button 
+                onClick={onMenuClick}
+                className="lg:hidden p-1.5 -ml-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                aria-label="Open menu"
+            >
+                <Menu className="w-5 h-5" />
+            </button>
             {/* Global search */}
             <div className="relative w-full max-w-sm">
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
