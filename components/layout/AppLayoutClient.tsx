@@ -17,14 +17,13 @@ export function AppLayoutClient({ children, userName, lastScanAt }: AppLayoutCli
         <>
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
             
-            <div className={`lg:pl-[220px] transition-all duration-300`}>
+            <div className={`relative flex flex-col h-screen overflow-hidden lg:pl-[220px] transition-all duration-300`}>
                 <TopNav 
                     userName={userName} 
-                    userRole="ADMIN" 
                     lastScanAt={lastScanAt}
                     onMenuClick={() => setIsSidebarOpen(true)}
                 />
-                <main className="pt-14 p-4 sm:p-6 min-h-screen">
+                <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">
                     {children}
                 </main>
             </div>

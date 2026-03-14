@@ -38,8 +38,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             {/* Logo */}
             <div className="flex items-center justify-between gap-2.5 px-5 h-14 border-b border-white/5 shrink-0">
                 <div className="flex items-center gap-2.5">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg shadow-blue-500/30">
-                        <Radar className="w-4 h-4 text-white" aria-hidden="true" />
+                    <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg shadow-blue-500/30 overflow-hidden border border-white/10">
+                        <img 
+                            src="/logo.png" 
+                            alt="LeadRadar Logo" 
+                            className="w-full h-full object-cover"
+                        />
                     </div>
                     <span className="text-sm font-bold text-white tracking-tight">LeadRadar</span>
                 </div>

@@ -19,7 +19,7 @@ export default function DashboardClient({ leads, totalKeywords, totalCommunities
         {
             icon: <TrendingUp className="w-4 h-4 text-blue-400" aria-hidden="true" />,
             iconBg: 'bg-blue-500/15',
-            label: 'New Leads Today',
+            label: 'New Leads (24h)',
             value: newLeadsCount.toString(),
             delta: '+12.5%',
             deltaType: 'up' as const,
