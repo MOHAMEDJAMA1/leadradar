@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 const GoogleIcon = () => (
     <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
@@ -22,6 +23,7 @@ export function SignupForm() {
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [authCode, setAuthCode] = useState<string | null>(null)
     const [oauthLoading, setOauthLoading] = useState(false)
 
     const supabase = createClient()
@@ -30,12 +32,22 @@ export function SignupForm() {
         e.preventDefault()
         setLoading(true)
         setError(null)
-        const { error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: { emailRedirectTo: `${location.origin}/auth/callback?next=/onboarding` },
+        setAuthCode(null)
+
+        const { signUp } = await import('@/app/actions/auth')
+        const result = await signUp({ 
+            email, 
+            password, 
+            origin: window.location.origin 
         })
-        if (error) { setError(error.message); setLoading(false); return }
+
+        if (!result.success) {
+            setError(result.error)
+            setAuthCode(result.code || null)
+            setLoading(false)
+            return
+        }
+
         router.push('/onboarding')
         router.refresh()
     }
@@ -81,7 +93,21 @@ export function SignupForm() {
                     <input id="signup-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" required autoComplete="new-password" minLength={8} disabled={loading} aria-required="true" className={inputCls} />
                 </div>
 
-                {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
+                {error && (
+                    <div role="alert" className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                        <p className="text-sm text-red-400">
+                            {error}
+                            {authCode === 'DUPLICATE_EMAIL' && (
+                                <Link 
+                                    href="/login" 
+                                    className="ml-2 font-semibold text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors"
+                                >
+                                    Log in
+                                </Link>
+                            )}
+                        </p>
+                    </div>
+                )}
 
                 <button
                     type="submit"
