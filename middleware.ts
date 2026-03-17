@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
     let supabaseResponse = NextResponse.next({
         request,
     })
@@ -40,7 +40,11 @@ export async function proxy(request: NextRequest) {
         pathname.startsWith('/signup') ||
         pathname.startsWith('/auth')
 
-    const isPublicRoute = pathname === '/'
+    const isPublicRoute = 
+        pathname === '/' || 
+        pathname === '/terms' || 
+        pathname === '/privacy' || 
+        pathname === '/refund'
 
     // Allow cron jobs to bypass user session check (they have their own CRON_SECRET auth)
     const isCronRoute = pathname.startsWith('/api/cron')
