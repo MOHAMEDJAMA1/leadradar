@@ -32,6 +32,36 @@ export async function middleware(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
+    // --- 1. Global IP Rate Limiting ---
+    const forwarded = request.headers.get('x-forwarded-for')
+    const ip = forwarded ? forwarded.split(',')[0] : '127.0.0.1'
+    const now = Date.now()
+    const rateLimitWindow = 60 * 1000 // 1 minute
+    const maxRequests = 100 // Slightly higher than 60 to be safe for hydration/assets
+
+    // Simple in-memory rate limit check (Note: resets on instance restart)
+    const globalAny = global as any
+    if (!globalAny.rateLimitMap) {
+        globalAny.rateLimitMap = new Map()
+    }
+    
+    const clientData = globalAny.rateLimitMap.get(ip) || { count: 0, startTime: now }
+    
+    if (now - clientData.startTime > rateLimitWindow) {
+        clientData.count = 1
+        clientData.startTime = now
+    } else {
+        clientData.count++
+    }
+    
+    globalAny.rateLimitMap.set(ip, clientData)
+    
+    if (clientData.count > maxRequests) {
+        console.error(`[SECURITY] Global rate limit exceeded for IP: ${ip}`)
+        return new NextResponse('Too Many Requests', { status: 429 })
+    }
+
+    // --- 2. Auth & Route Protection ---
     const { pathname } = request.nextUrl
 
     // Unauthenticated users can only access auth routes and the landing page

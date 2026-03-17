@@ -80,14 +80,20 @@ export async function updateUserSettings(updates: {
             return { success: false, error: 'Unauthorized' }
         }
 
-        // Defense-in-depth: Remove sensitive columns if they were somehow passed from client
-        const safeUpdates = { ...updates }
-        delete (safeUpdates as any).manual_scans_count
-        delete (safeUpdates as any).manual_scans_reset_at
-        delete (safeUpdates as any).ai_replies_count
-        delete (safeUpdates as any).ai_replies_reset_at
-        delete (safeUpdates as any).last_scan_at
-        delete (safeUpdates as any).last_scan_summary
+        // 1. Input Validation & Sanitization
+        const VALID_FREQUENCIES = ['1h', '6h', '12h', '24h', 'manual']
+        if (updates.scan_frequency && !VALID_FREQUENCIES.includes(updates.scan_frequency)) {
+            logger.security('Invalid scan frequency attempt', { userId: user.id, frequency: updates.scan_frequency })
+            return { success: false, error: 'Invalid scan frequency' }
+        }
+
+        // 2. Defense-in-depth: Strict allow-list for client updates
+        const safeUpdates: any = {}
+        if (updates.scan_frequency !== undefined) safeUpdates.scan_frequency = updates.scan_frequency
+        if (updates.email_alerts_enabled !== undefined) safeUpdates.email_alerts_enabled = !!updates.email_alerts_enabled
+        if (updates.onboarding_completed !== undefined) safeUpdates.onboarding_completed = !!updates.onboarding_completed
+        
+        // NEVER allow direct updates to sensitive fields like count or last_scan
 
         let resultData
 

@@ -19,49 +19,32 @@ export async function triggerScan(): Promise<{ success: boolean; data?: ScanSumm
             return { success: false, error: 'Unauthorized' }
         }
 
-        logger.info(`Manual scan triggered by user: ${user.id}`)
+        logger.info(`Manual scan execution started`, { userId: user.id })
 
-        // 1. Enforce Rate Limits
-        const { data: settings, error: settingsError } = await supabase
-            .from('user_settings')
-            .select('manual_scans_count, manual_scans_reset_at')
-            .eq('user_id', user.id)
-            .single()
+        // 1. Enforce Rate Limits (standardized)
+        const { checkRateLimit } = await import('@/lib/rate-limit')
+        const { allowed, reset_at } = await checkRateLimit(user.id, 'scan', SCAN_RATE_LIMIT, ONE_HOUR_MS)
 
-        if (settingsError && settingsError.code !== 'PGRST116') throw settingsError
-
-        const now = new Date()
-        const resetAt = settings?.manual_scans_reset_at ? new Date(settings.manual_scans_reset_at) : new Date(0)
-
-        let newCount = settings?.manual_scans_count || 0
-        let newResetAt = resetAt
-
-        if (now > resetAt) {
-            newCount = 0
-            newResetAt = new Date(now.getTime() + ONE_HOUR_MS)
-        }
-
-        if (newCount >= SCAN_RATE_LIMIT) {
-            logger.warn(`Rate limit reached for user ${user.id} during manual scan`)
+        if (!allowed) {
+            logger.warn(`Rate limit reached for user during manual scan`, { userId: user.id })
             return {
                 success: false,
-                error: 'Rate limit reached. You can trigger a maximum of 5 manual scans per hour.'
+                error: `Rate limit reached. You can trigger a maximum of ${SCAN_RATE_LIMIT} manual scans per hour. Next reset at ${reset_at.toLocaleTimeString()}.`
             }
         }
 
         // 2. Execute Scan
         const summary = await runScan(supabase, user.id)
 
-        // 3. Update Stats using Admin Client
+        // 3. Update Last Scan Timestamp using Admin Client
         const adminSupabase = await createAdminClient()
+        const now = new Date()
         await adminSupabase.from('user_settings')
-            .upsert({
-                user_id: user.id,
+            .update({
                 last_scan_at: now.toISOString(),
-                manual_scans_count: newCount + 1,
-                manual_scans_reset_at: newResetAt.toISOString(),
                 updated_at: now.toISOString()
             })
+            .eq('user_id', user.id)
 
         logger.info(`Manual scan completed for user: ${user.id}`, {
             newLeads: (summary.reddit?.leadsDetected || 0) + (summary.twitter?.leadsDetected || 0),

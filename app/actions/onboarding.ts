@@ -31,32 +31,39 @@ export async function completeOnboarding(data: OnboardingData) {
             communityCount: data.communities.length
         })
 
-        // 1. Insert keywords
-        if (data.keywords.length > 0) {
-            const keywordRows = data.keywords.map(k => ({
+        // 1. Input Validation & Sanitization
+        const sanitizedKeywords = data.keywords
+            .filter(k => k.keyword && k.keyword.trim().length > 0)
+            .map(k => ({
                 user_id: user.id,
-                keyword: k.keyword,
-                category: k.category,
+                keyword: k.keyword.trim().toLowerCase(),
+                category: k.category.trim() || 'General',
                 is_active: true
             }))
-            
-            await supabase.from('tracked_keywords').insert(keywordRows)
+            .slice(0, 50) // Absolute cap for safety
+
+        const sanitizedCommunities = data.communities
+            .filter(c => c && c.trim().length > 0)
+            .map(c => c.trim())
+            .slice(0, 50) // Absolute cap for safety
+
+        // 2. Insert keywords
+        if (sanitizedKeywords.length > 0) {
+            await supabase.from('tracked_keywords').insert(sanitizedKeywords)
         }
 
-        // 2. Insert communities (linking by name to source)
-        if (data.communities.length > 0) {
-            // First get the community IDs corresponding to the names
+        // 3. Insert communities (linking by name to source)
+        if (sanitizedCommunities.length > 0) {
             const { data: dbCommunities } = await supabase
                 .from('communities')
                 .select('id, name')
-                .in('name', data.communities)
+                .in('name', sanitizedCommunities)
 
             if (dbCommunities && dbCommunities.length > 0) {
                 const monitoredRows = dbCommunities.map(c => ({
                     user_id: user.id,
                     community_id: c.id
                 }))
-                // Upsert to ignore duplicates if they re-run
                 await supabase.from('user_monitored_communities').upsert(monitoredRows)
             }
         }

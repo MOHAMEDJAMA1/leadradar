@@ -24,30 +24,16 @@ export async function generateAiReply(leadId: string) {
 
         logger.info(`AI Reply generation requested by user ${user.id} for lead ${leadId}`)
 
-        // 1. Enforce Rate Limits
-        const { data: settings, error: settingsError } = await supabase
-            .from('user_settings')
-            .select('id, ai_replies_count, ai_replies_reset_at')
-            .eq('user_id', user.id)
-            .single()
+        // 1. Enforce Rate Limits (standardized)
+        const { checkRateLimit } = await import('@/lib/rate-limit')
+        const { allowed, reset_at } = await checkRateLimit(user.id, 'ai_reply', AI_REPLY_RATE_LIMIT, ONE_HOUR_MS)
 
-        if (settingsError) throw settingsError
-
-        const now = new Date()
-        const resetAt = settings.ai_replies_reset_at ? new Date(settings.ai_replies_reset_at) : new Date(0)
-
-        // Reset counter if time elapsed
-        let newCount = settings.ai_replies_count || 0
-        let newResetAt = resetAt
-
-        if (now > resetAt) {
-            newCount = 0
-            newResetAt = new Date(now.getTime() + ONE_HOUR_MS)
-        }
-
-        if (newCount >= AI_REPLY_RATE_LIMIT) {
+        if (!allowed) {
             logger.warn(`AI Rate limit hit for user ${user.id}`)
-            return { success: false, error: 'Rate limit reached. You can generate a maximum of 5 replies per hour.' }
+            return { 
+                success: false, 
+                error: `Rate limit reached. You can generate a maximum of ${AI_REPLY_RATE_LIMIT} replies per hour. Next reset at ${reset_at.toLocaleTimeString()}.` 
+            }
         }
 
         // 2. Fetch Lead Context
@@ -151,18 +137,9 @@ or
                 ai_reply_created_at: new Date().toISOString()
             })
             .eq('id', leadId)
+            .eq('user_id', user.id) // Strict ownership check
 
         if (updateLeadError) throw updateLeadError
-
-        // 7. Increment usage count using Admin Client to bypass RLS/Trigger restrictions
-        const adminSupabase = await createAdminClient()
-        await adminSupabase
-            .from('user_settings')
-            .update({
-                ai_replies_count: newCount + 1,
-                ai_replies_reset_at: newResetAt.toISOString()
-            })
-            .eq('user_id', user.id)
 
         logger.info(`AI Reply successfully generated for lead ${leadId} (User: ${user.id})`)
         
