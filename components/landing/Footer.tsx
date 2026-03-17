@@ -17,13 +17,21 @@ export function Footer() {
                     {/* Center links */}
                     <nav aria-label="Footer navigation">
                         <ul className="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500">
-                            {['Terms', 'Privacy', 'Cookies', 'Support'].map((item) => (
-                                <li key={item}>
-                                    <Link href="#" className="hover:text-slate-300 transition-colors duration-150">
-                                        {item}
-                                    </Link>
-                                </li>
-                            ))}
+                            <li>
+                                <Link href="/terms" className="hover:text-slate-300 transition-colors duration-150">
+                                    Terms
+                                </Link>
+                            </li>
+                            <li>
+                                <Link href="/privacy" className="hover:text-slate-300 transition-colors duration-150">
+                                    Privacy
+                                </Link>
+                            </li>
+                            <li>
+                                <Link href="/refund" className="hover:text-slate-300 transition-colors duration-150">
+                                    Refund
+                                </Link>
+                            </li>
                         </ul>
                     </nav>
 
