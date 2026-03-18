@@ -68,12 +68,14 @@ export interface KeywordMatch {
     keywordId: string
     keywordPhrase: string
     category: string | null
+    matchScore?: number  // Phase 4.7: specificity + context scoring
 }
 
 export interface IntentScore {
     score: number
     level: 'high' | 'medium' | 'low'
     reasons: string[]
+    confidence_score?: number
 }
 
 // ─── Lead candidate (matched post before DB write) ───────────────────────────

@@ -81,6 +81,7 @@ export async function persistLead(
         detected_at: new Date().toISOString(),
         platform,
         lead_confidence: intent.lead_confidence || null,
+        confidence_score: intent.confidence_score ?? null, // Phase 4.7: 0-100 quality score
 
         // Phase 5.6 Comment fields
         lead_type: post.isComment ? 'comment' : 'post',

@@ -137,10 +137,29 @@ export function LeadRow({ lead, onClick }: LeadRowProps) {
 
             {/* Confidence */}
             <td className="py-4 px-5">
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border uppercase tracking-wide ${confidenceStyle}`}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
-                    {confidence}
-                </span>
+                <div className="flex flex-col gap-1">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border uppercase tracking-wide ${confidenceStyle}`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
+                        {confidence}
+                    </span>
+                    {lead.confidence_score != null && (
+                        <div className="flex items-center gap-1.5 px-1">
+                            <div className="flex-1 h-1 rounded-full bg-white/8 overflow-hidden">
+                                <div
+                                    className={`h-full rounded-full transition-all ${
+                                        lead.confidence_score >= 80 ? 'bg-red-400' :
+                                        lead.confidence_score >= 55 ? 'bg-emerald-400' :
+                                        lead.confidence_score >= 30 ? 'bg-blue-400' :
+                                        'bg-slate-500'
+                                    }`}
+                                    style={{ width: `${lead.confidence_score}%` }}
+                                    aria-label={`Quality score: ${lead.confidence_score}/100`}
+                                />
+                            </div>
+                            <span className="text-[10px] text-slate-600 tabular-nums">{lead.confidence_score}</span>
+                        </div>
+                    )}
+                </div>
             </td>
 
             {/* Time */}

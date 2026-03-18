@@ -26,6 +26,9 @@ export interface DBLead {
     // Phase 7.5 Quality Tuning
     lead_confidence?: 'Hot' | 'High' | 'Medium' | 'Low' | null
 
+    // Phase 4.7 Lead Quality Optimization
+    confidence_score?: number | null // 0-100 quality score
+
     // Phase 5.5 AI Fields
     ai_reply_generated?: boolean
     ai_reply_text?: string | null
@@ -62,10 +65,16 @@ export function isHotLead(lead: DBLead): boolean {
 
     // Must explicitly contain a buying or service request signal
     const hasBuyingSignal = reasons.some(r =>
-        r === 'Hiring signal detected' ||
+        r.toLowerCase().includes('hiring signal') ||
+        r.toLowerCase().includes('hire') ||
+        r.toLowerCase().includes('budget') ||
+        r.toLowerCase().includes('recommendation request') ||
+        r.toLowerCase().includes('service-seeking') ||
+        r.toLowerCase().includes('context match') ||
         r === 'service_request_detected' ||
         r === 'High-Intent Phrase Detected' ||
-        r === 'Proximity: Keyword near intent phrase'
+        r === 'Proximity: Keyword near intent phrase' ||
+        r === 'Business need detected'
     )
     if (!hasBuyingSignal) return false
 
